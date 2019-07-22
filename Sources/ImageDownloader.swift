@@ -601,6 +601,35 @@ final class ImageDownloaderSessionHandler: NSObject, URLSessionDataDelegate, Aut
         }
     }
     
+    ///////////////////////// add by yfm
+    
+    /// 按屏幕宽度等比压缩图片
+    ///
+    /// - Parameter image: 目标图片
+    /// - Returns: 压缩后的图片
+    private func scaleImage(image: UIImage?) -> UIImage {
+        guard let image = image else { return UIImage() }
+        let screenWidth = UIScreen.main.bounds.size.width
+        let imageWidth = image.size.width
+        let imageHeight = image.size.height
+        var targetWidth: CGFloat = 0.0
+        var targetHeight: CGFloat = 0.0
+        if imageWidth > screenWidth {
+            targetWidth = screenWidth
+            targetHeight = screenWidth * imageHeight / imageWidth
+        } else {
+            targetWidth = imageWidth
+            targetHeight = imageHeight
+        }
+        let size = CGSize(width: targetWidth, height: targetHeight)
+        UIGraphicsBeginImageContext(size);
+        image.draw(in: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return newImage ?? UIImage()
+    }
+    /////////////////////////
+    
     private func processImage(for task: URLSessionTask, url: URL) {
 
         guard let downloader = downloadHolder else {
@@ -625,6 +654,12 @@ final class ImageDownloaderSessionHandler: NSObject, URLSessionDataDelegate, Aut
                 data = fetchedData
             }
             
+            //////////////
+            let image = UIImage(data: data ?? Data())
+            let newImage = self.scaleImage(image: image)
+            let newData = newImage.jpegData(compressionQuality: 1.0)
+            //////////////
+            
             // Cache the processed images. So we do not need to re-process the image if using the same processor.
             // Key is the identifier of processor.
             var imageCache: [String: Image] = [:]
@@ -636,7 +671,8 @@ final class ImageDownloaderSessionHandler: NSObject, URLSessionDataDelegate, Aut
                 
                 let processor = options.processor
                 var image = imageCache[processor.identifier]
-                if let data = data, image == nil {
+                if let data = newData, image == nil { // 这是修改后的，原实现是下面注释的这行
+//                if let data = data, image == nil {
                     image = processor.process(item: .data(data), options: options)
                     // Add the processed image to cache. 
                     // If `image` is nil, nothing will happen (since the key is not existing before).
