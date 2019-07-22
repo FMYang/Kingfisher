@@ -24,11 +24,9 @@ platform :ios do
   desc "Release new version"
   lane :release do |options|
       target_version = options[:version]
-      puts '=========================='
-      puts target_version
       raise "The version is missed. Use `fastlane release version:{version_number}`.`" if target_version.nil?
 
-      # ensure_git_branch
+      ensure_git_branch
       ensure_git_status_clean
       
       test
